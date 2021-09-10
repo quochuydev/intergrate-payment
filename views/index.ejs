@@ -1,0 +1,101 @@
+<p>stripe add card</p>
+<form>
+    <div>
+        <label>Name</label>
+        <input class="my-input">
+    </div>
+    <div>
+        <label>Card</label>
+        <div class="my-input" id="card-element"></div>
+    </div>
+</form>
+
+<p>apple/google pay</p>
+<div id="payment-request-button">
+</div>
+<p id="access">---</p>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    var stripe = Stripe('pk_test_51IvEPFJTAR9d8mS41HRDbWsCivfl6hEoyvOpc5M7PTc79XQ9YPsfGmlu21j9tB34qOcyDGZbnf1v1hacQHwRAoah00PcKf4lRv');
+
+    var elements = stripe.elements();
+
+    var cardElement = elements.create('card');
+    var cardElement = elements.getElement('card');
+    cardElement.mount('#card-element');
+
+    cardElement.on('change', function (event) {
+        if (event.complete) {
+            console.log(event)
+            stripe
+                .createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                    billing_details: {
+                        name: 'PHAM QUOC HUY',
+                    },
+                })
+                .then(function (result) {
+                    console.log(result);
+                    // API GET /stripe/setup-intents
+                    stripe
+                        .confirmCardSetup('seti___', {
+                            payment_method: result?.paymentMethod?.id
+                        })
+                        .then(function (intent) {
+                            console.log(intent);
+                        });
+                    // POST API /payments
+                });
+
+        } else if (event.error) {
+            // show validation to customer
+        }
+    });
+
+    var paymentRequest = stripe.paymentRequest({
+        country: 'US',
+        currency: 'usd',
+        total: {
+            label: 'amount',
+            amount: 0,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+    });
+
+    var prButton = elements.create('paymentRequestButton', {
+        paymentRequest,
+    });
+
+    paymentRequest.canMakePayment().then(result => {
+        $('#access').text(JSON.stringify(result))
+        if (result) {
+            prButton.mount('#payment-request-button');
+        }
+    });
+
+    paymentRequest.on('paymentmethod', function (result) {
+        console.log(result);
+        stripe
+            .confirmCardSetup('seti____', {
+                payment_method: result?.paymentMethod?.id
+            })
+            .then(function (intent) {
+                console.log(intent.setupIntent.payment_method);
+            });
+    });
+
+    //
+
+    $.ajax({
+        url: 'http://localhost:8080/payment',
+        type: "post",
+        dataType: "json",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({ paymentMethodId: "pm_1JY6hRJTAR9d8mS43AoPBpfb" })
+    })
+        .done(res => console.log(res))
+</script>
